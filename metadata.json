@@ -1,0 +1,8 @@
+{
+  "name": "Copy of Pantry Chef:Waste Reducer",
+  "description": "Reduce food waste with AI-powered recipe suggestions from your fridge content.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
