@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { Recipe } from '../types';
-import { Share2, Copy, Pin, Clock, Flame, ChefHat, Loader2, Check } from 'lucide-react';
+import { Share2, Copy, Pin, Clock, Flame, ChefHat, Loader2, Check, TrendingUp } from 'lucide-react';
 import { generateRecipeImage } from '../services/geminiService';
 
 interface RecipeCardProps {
@@ -24,7 +25,6 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPin, isPinned }) => {
           setDisplayImage(url);
           setImageLoading(false);
         } else if (isMounted) {
-          // Fallback static image if generation fails
           const fallback = recipe.cuisine.toLowerCase().includes('indian') 
             ? 'https://images.unsplash.com/photo-1585937421612-70a008356f36?auto=format&fit=crop&w=600&q=80'
             : 'https://images.unsplash.com/photo-1493770348161-369560ae357d?auto=format&fit=crop&w=600&q=80';
@@ -63,9 +63,14 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPin, isPinned }) => {
     }
   };
 
+  // Logic to determine calorie intensity for the meter
+  const calValue = parseInt(recipe.calories || '0');
+  const calColor = calValue > 700 ? 'bg-red-500' : calValue > 400 ? 'bg-chef-orange' : 'bg-chef-green';
+  const calWidth = Math.min((calValue / 1000) * 100, 100);
+
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group border border-gray-100 dark:border-slate-700">
-      <div className="relative h-48 overflow-hidden bg-gray-100 dark:bg-slate-700 flex items-center justify-center">
+    <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 group border border-gray-100 dark:border-slate-700">
+      <div className="relative h-52 overflow-hidden bg-gray-100 dark:bg-slate-700 flex items-center justify-center">
         {imageLoading ? (
           <div className="flex flex-col items-center gap-2">
             <Loader2 className="animate-spin text-chef-orange" size={32} />
@@ -75,89 +80,123 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPin, isPinned }) => {
           <img 
             src={displayImage || ''} 
             alt={recipe.title} 
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
           />
         )}
-        <div className="absolute top-0 right-0 p-2 flex gap-2">
+        
+        <div className="absolute top-0 right-0 p-3 flex gap-2">
           <button 
             onClick={() => onPin(recipe)}
-            className={`p-2 rounded-full backdrop-blur-md transition-colors ${isPinned ? 'bg-chef-yellow text-white' : 'bg-white/30 text-white hover:bg-white/50'}`}
+            className={`p-2.5 rounded-full backdrop-blur-md transition-all ${isPinned ? 'bg-chef-yellow text-white shadow-lg' : 'bg-white/30 text-white hover:bg-white/50'}`}
           >
-            <Pin size={18} fill={isPinned ? "currentColor" : "none"} />
+            <Pin size={20} fill={isPinned ? "currentColor" : "none"} />
           </button>
         </div>
-        <div className="absolute bottom-0 left-0 bg-gradient-to-t from-black/80 to-transparent p-4 w-full">
-          <span className="inline-block px-2 py-0.5 bg-chef-orange text-white text-[10px] font-bold rounded-full mb-1 uppercase tracking-wider">
+        
+        <div className="absolute bottom-0 left-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-5 w-full">
+          <span className="inline-block px-3 py-1 bg-chef-orange text-white text-[10px] font-black rounded-full mb-2 uppercase tracking-widest shadow-sm">
             {recipe.cuisine}
           </span>
-          <h3 className="text-white font-bold text-lg leading-tight truncate drop-shadow-md">{recipe.title}</h3>
         </div>
       </div>
 
-      <div className="p-4">
-        <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 dark:text-gray-500 mb-4 uppercase tracking-widest">
-          <div className="flex items-center gap-1">
-            <Clock size={12} className="text-chef-orange" />
+      <div className="p-6">
+        {/* Calorie Display - "Above" the recipe details */}
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex flex-col gap-1 flex-1">
+            <div className="flex items-center gap-2">
+              <Flame size={18} className="text-chef-orange animate-pulse" />
+              <span className="text-sm font-black text-gray-800 dark:text-white uppercase tracking-tighter">
+                {recipe.calories || 'N/A'} <span className="text-gray-400">KCAL</span>
+              </span>
+            </div>
+            <div className="w-full bg-gray-100 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden mt-1">
+              <div 
+                className={`h-full transition-all duration-1000 ${calColor}`} 
+                style={{ width: `${calWidth}%` }}
+              ></div>
+            </div>
+          </div>
+          <div className="pl-4 text-right">
+             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Intensity</span>
+             <span className={`text-xs font-black uppercase ${calColor.replace('bg-', 'text-')}`}>
+                {calValue > 700 ? 'High' : calValue > 400 ? 'Moderate' : 'Light'}
+             </span>
+          </div>
+        </div>
+
+        <h3 className="text-gray-900 dark:text-white font-black text-xl leading-tight mb-3 group-hover:text-chef-orange transition-colors">
+          {recipe.title}
+        </h3>
+
+        <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 dark:text-gray-500 mb-5 uppercase tracking-[0.15em] border-y border-gray-50 dark:border-slate-700 py-3">
+          <div className="flex items-center gap-2">
+            <Clock size={14} className="text-chef-orange" />
             <span>{recipe.prepTime}</span>
           </div>
-          <div className="flex items-center gap-1 border-x px-3 border-gray-100 dark:border-slate-700">
-            <Flame size={12} className="text-chef-orange" />
-            <span>{recipe.calories || 'N/A'} kcal</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <ChefHat size={12} className="text-chef-orange" />
+          <div className="flex items-center gap-2 border-l pl-4 border-gray-100 dark:border-slate-700">
+            <ChefHat size={14} className="text-chef-orange" />
             <span>{recipe.difficulty || 'Medium'}</span>
           </div>
         </div>
 
-        <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2 leading-relaxed">
-          {recipe.description}
+        <p className="text-gray-600 dark:text-gray-400 text-sm mb-6 line-clamp-3 leading-relaxed font-medium italic">
+          "{recipe.description}"
         </p>
 
         {recipe.missingIngredients && recipe.missingIngredients.length > 0 && (
-           <div className="mb-4 bg-red-50 dark:bg-red-900/10 p-2 rounded-lg border border-red-100 dark:border-red-900/20">
-             <p className="text-[10px] text-red-600 dark:text-red-400 font-bold uppercase tracking-tight">Shopping List: {recipe.missingIngredients.slice(0,3).join(', ')}{recipe.missingIngredients.length > 3 ? '...' : ''}</p>
+           <div className="mb-6 bg-red-50/50 dark:bg-red-900/10 p-3 rounded-2xl border border-red-100 dark:border-red-900/20">
+             <p className="text-[10px] text-red-600 dark:text-red-400 font-black uppercase tracking-widest mb-1 flex items-center gap-2">
+                <TrendingUp size={12} /> Shopping Required
+             </p>
+             <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                {recipe.missingIngredients.join(', ')}
+             </p>
            </div>
         )}
 
-        <div className="flex gap-2 border-t dark:border-slate-700 pt-3 mt-auto">
+        <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-slate-700">
           <button 
             onClick={handleCopy}
-            className="flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-slate-700 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-600 transition-all active:scale-95"
+            className="flex-1 flex items-center justify-center gap-2 py-3 text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-slate-700 rounded-2xl hover:bg-chef-orange hover:text-white transition-all active:scale-95 shadow-sm"
           >
-            {copied ? <Check size={14} className="text-chef-green" /> : <Copy size={14} />}
-            {copied ? 'Copied' : 'Copy'}
+            {copied ? <Check size={16} /> : <Copy size={16} />}
+            {copied ? 'Copied' : 'Recipe'}
           </button>
           <button 
              onClick={handleShare}
-             className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold transition-all active:scale-95 rounded-xl ${shared ? 'bg-chef-green text-white' : 'text-chef-green bg-green-50 dark:bg-green-900/10 hover:bg-green-100 dark:hover:bg-green-900/20'}`}
+             className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-black uppercase tracking-widest transition-all active:scale-95 rounded-2xl shadow-sm ${shared ? 'bg-chef-green text-white' : 'text-chef-green bg-green-50 dark:bg-green-900/10 hover:bg-chef-green hover:text-white'}`}
           >
-            {shared ? <Check size={14} /> : <Share2 size={14} />}
-            {shared ? 'Shared!' : 'Share'}
+            {shared ? <Check size={16} /> : <Share2 size={16} />}
+            {shared ? 'Done!' : 'Share'}
           </button>
         </div>
         
-        <details className="mt-3 text-xs text-gray-700 dark:text-gray-400">
-            <summary className="cursor-pointer font-bold hover:text-chef-orange transition-colors list-none flex items-center gap-1">
-                <span className="text-chef-orange">▶</span> Ingredients
-            </summary>
-            <ul className="list-disc pl-4 mt-2 space-y-1 border-l-2 border-chef-orange/20 ml-1">
-                {recipe.ingredients.map((ing, i) => (
-                    <li key={i}>{ing}</li>
-                ))}
-            </ul>
-        </details>
-        
-        <details className="mt-2 text-xs text-gray-700 dark:text-gray-400">
-            <summary className="cursor-pointer font-bold hover:text-chef-orange transition-colors list-none flex items-center gap-1">
-                <span className="text-chef-orange">▶</span> Method
-            </summary>
-            <ol className="list-decimal pl-4 mt-2 space-y-2 border-l-2 border-chef-yellow/20 ml-1">
-                {recipe.instructions.map((step, i) => (
-                    <li key={i} className="pl-1">{step}</li>
-                ))}
-            </ol>
-        </details>
+        <div className="mt-4 space-y-2">
+          <details className="text-xs text-gray-700 dark:text-gray-400 group/details">
+              <summary className="cursor-pointer font-black uppercase tracking-widest text-[10px] text-gray-400 hover:text-chef-orange transition-colors list-none flex items-center justify-between p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700">
+                  <span>View Ingredients</span>
+                  <span className="text-chef-orange group-open/details:rotate-90 transition-transform">▶</span>
+              </summary>
+              <ul className="list-disc pl-5 mt-3 space-y-1.5 border-l-2 border-chef-orange/20 ml-2 py-1 font-medium">
+                  {recipe.ingredients.map((ing, i) => (
+                      <li key={i}>{ing}</li>
+                  ))}
+              </ul>
+          </details>
+          
+          <details className="text-xs text-gray-700 dark:text-gray-400 group/details">
+              <summary className="cursor-pointer font-black uppercase tracking-widest text-[10px] text-gray-400 hover:text-chef-orange transition-colors list-none flex items-center justify-between p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700">
+                  <span>Cooking Steps</span>
+                  <span className="text-chef-orange group-open/details:rotate-90 transition-transform">▶</span>
+              </summary>
+              <ol className="list-decimal pl-5 mt-3 space-y-3 border-l-2 border-chef-yellow/20 ml-2 py-1 font-medium">
+                  {recipe.instructions.map((step, i) => (
+                      <li key={i} className="pl-2">{step}</li>
+                  ))}
+              </ol>
+          </details>
+        </div>
       </div>
     </div>
   );
