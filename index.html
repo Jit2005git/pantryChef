@@ -2,47 +2,56 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pantry Chef | Reduce Food Waste with AI</title>
-    
-    <!-- Meta Tags -->
-    <meta name="title" content="Pantry Chef | Reduce Food Waste with AI" />
-    <meta name="description" content="Turn your leftovers into gourmet meals with AI." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Pantry Chef | AI Waste Reducer</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <style>
-      body { font-family: 'Poppins', sans-serif; overflow-x: hidden; }
-      .glass-panel {
-        background: rgba(255, 255, 255, 0.85);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
+      body { 
+        font-family: 'Poppins', sans-serif; 
+        margin: 0; 
+        padding: 0;
+        overflow-x: hidden;
+        -webkit-tap-highlight-color: transparent;
       }
-      .dark .glass-panel { background: rgba(30, 41, 59, 0.85); }
-      .scrollbar-hide::-webkit-scrollbar { display: none; }
-      .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+      #root { min-height: 100vh; }
       
-      #error-display {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: #fff;
-        z-index: 10000;
-        padding: 2rem;
-        color: #ef4444;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      /* Initial loader before React mounts */
+      #initial-loader {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        background: #f9fafb;
       }
-      .dark #error-display { background: #0f172a; }
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #FF6B6B;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+      /* Global utility for responsive buttons */
+      .btn-responsive {
+        @apply px-3 py-2 sm:px-4 sm:py-3 text-[10px] sm:text-xs font-bold uppercase tracking-widest;
+      }
     </style>
 
     <script>
+      // Initialize environment
       window.process = { env: { API_KEY: "" } };
       
       tailwind.config = {
         darkMode: 'class',
         theme: {
           extend: {
+            screens: { 'xs': '375px' },
             colors: {
               chef: {
                 orange: '#FF6B6B',
@@ -75,18 +84,27 @@
 </script>
   </head>
   <body class="bg-gray-50 text-gray-900 transition-colors duration-300">
-    <div id="root"></div>
-    <div id="error-display"></div>
+    <div id="root">
+      <div id="initial-loader">
+        <div class="spinner"></div>
+        <p style="margin-top: 1rem; font-weight: 700; color: #6b7280; font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase;">
+          Chef is Preparing...
+        </p>
+      </div>
+    </div>
+    
+    <div id="error-display" style="display:none; position:fixed; inset:0; background:#fff; z-index:99999; padding:2rem; color:#ef4444; font-family:monospace;"></div>
 
     <script>
       window.onerror = function(msg, url, lineNo, columnNo, error) {
+        console.error(error);
         const display = document.getElementById('error-display');
         display.style.display = 'block';
         display.innerHTML = `
-          <h1 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 1rem;">Application Initialization Failed</h1>
-          <p style="margin-bottom: 0.5rem;"><strong>Error:</strong> ${msg}</p>
-          <p style="font-size: 0.8rem; opacity: 0.7;">${url} [${lineNo}:${columnNo}]</p>
-          <button onclick="location.reload()" style="margin-top: 2rem; background: #FF6B6B; color: white; padding: 0.5rem 1rem; border: none; border-radius: 0.5rem; cursor: pointer;">Retry Loading</button>
+          <h2 style="margin-bottom:1rem">App Crash</h2>
+          <p><strong>Message:</strong> ${msg}</p>
+          <p style="font-size:12px; opacity:0.6">${url}:${lineNo}</p>
+          <button onclick="location.reload()" style="margin-top:1rem; padding:8px 16px; background:#FF6B6B; color:#fff; border:none; border-radius:4px; cursor:pointer">Reload Page</button>
         `;
         return false;
       };
