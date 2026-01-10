@@ -8,8 +8,22 @@ if (!rootElement) {
 }
 
 const root = ReactDOM.createRoot(rootElement);
+
+// We use a small timeout to ensure the browser has actually rendered the first frame
+// of the React app before hiding the splash screen.
 root.render(
   <React.StrictMode>
     <App />
   </React.StrictMode>
 );
+
+// Remove the initial loader once React takes over
+const loader = document.getElementById('initial-loader');
+if (loader) {
+  setTimeout(() => {
+    loader.style.opacity = '0';
+    setTimeout(() => {
+      loader.style.display = 'none';
+    }, 500);
+  }, 300);
+}

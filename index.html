@@ -14,52 +14,44 @@
         margin: 0; 
         padding: 0;
         overflow-x: hidden;
-        -webkit-tap-highlight-color: transparent;
+        background: #f9fafb;
       }
       #root { min-height: 100vh; }
       
-      /* Initial loader before React mounts */
       #initial-loader {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         height: 100vh;
+        width: 100vw;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 10000;
         background: #f9fafb;
+        transition: opacity 0.5s ease-out;
       }
       .spinner {
-        width: 40px;
-        height: 40px;
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #FF6B6B;
+        width: 50px;
+        height: 50px;
+        border: 5px solid #f3f3f3;
+        border-top: 5px solid #FF6B6B;
         border-radius: 50%;
         animation: spin 1s linear infinite;
       }
       @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-      /* Global utility for responsive buttons */
-      .btn-responsive {
-        @apply px-3 py-2 sm:px-4 sm:py-3 text-[10px] sm:text-xs font-bold uppercase tracking-widest;
-      }
     </style>
 
     <script>
-      // Initialize environment
       window.process = { env: { API_KEY: "" } };
-      
       tailwind.config = {
         darkMode: 'class',
         theme: {
           extend: {
             screens: { 'xs': '375px' },
             colors: {
-              chef: {
-                orange: '#FF6B6B',
-                yellow: '#FFD93D',
-                green: '#6BCB77',
-                dark: '#2C3E50',
-                light: '#F7F7F7'
-              }
+              chef: { orange: '#FF6B6B', yellow: '#FFD93D', green: '#6BCB77', dark: '#2C3E50' }
             }
           }
         }
@@ -83,28 +75,28 @@
 }
 </script>
   </head>
-  <body class="bg-gray-50 text-gray-900 transition-colors duration-300">
-    <div id="root">
-      <div id="initial-loader">
-        <div class="spinner"></div>
-        <p style="margin-top: 1rem; font-weight: 700; color: #6b7280; font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase;">
-          Chef is Preparing...
-        </p>
-      </div>
+  <body>
+    <div id="initial-loader">
+      <div class="spinner"></div>
+      <p style="margin-top: 1.5rem; font-weight: 800; color: #FF6B6B; font-size: 0.9rem; letter-spacing: 0.15em; text-transform: uppercase;">
+        Chef is Preparing...
+      </p>
     </div>
-    
+
+    <div id="root"></div>
     <div id="error-display" style="display:none; position:fixed; inset:0; background:#fff; z-index:99999; padding:2rem; color:#ef4444; font-family:monospace;"></div>
 
     <script>
       window.onerror = function(msg, url, lineNo, columnNo, error) {
-        console.error(error);
         const display = document.getElementById('error-display');
+        const loader = document.getElementById('initial-loader');
+        if (loader) loader.style.display = 'none';
         display.style.display = 'block';
         display.innerHTML = `
-          <h2 style="margin-bottom:1rem">App Crash</h2>
-          <p><strong>Message:</strong> ${msg}</p>
-          <p style="font-size:12px; opacity:0.6">${url}:${lineNo}</p>
-          <button onclick="location.reload()" style="margin-top:1rem; padding:8px 16px; background:#FF6B6B; color:#fff; border:none; border-radius:4px; cursor:pointer">Reload Page</button>
+          <h2 style="margin-bottom:1rem">Application Failed to Start</h2>
+          <p><strong>Error:</strong> ${msg}</p>
+          <p style="font-size:12px; opacity:0.6">${url}:${lineNo}:${columnNo}</p>
+          <button onclick="location.reload()" style="margin-top:2rem; padding:10px 20px; background:#FF6B6B; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">Try Again</button>
         `;
         return false;
       };
