@@ -64,7 +64,6 @@ const InputSection: React.FC<InputSectionProps> = ({ onSearch, isLoading }) => {
     if (!text && !selectedImage) return;
 
     if (selectedImage) {
-      // Split base64 to get clean data and mime type
       const [prefix, data] = selectedImage.split(',');
       const mimeType = prefix.match(/:(.*?);/)?.[1] || 'image/jpeg';
       onSearch({ text, imageBase64: data, mimeType });
@@ -84,12 +83,11 @@ const InputSection: React.FC<InputSectionProps> = ({ onSearch, isLoading }) => {
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto">
-      <div className="relative glass-panel rounded-2xl shadow-xl p-2 border border-white/40">
+    <div className="w-full max-w-3xl mx-auto px-2">
+      <div className="relative glass-panel rounded-2xl shadow-xl p-1 sm:p-2 border border-white/40">
         
-        {/* Image Preview */}
         {selectedImage && (
-          <div className="relative w-full h-32 mb-2 rounded-lg overflow-hidden bg-gray-100 group">
+          <div className="relative w-full h-24 sm:h-32 mb-2 rounded-lg overflow-hidden bg-gray-100 group">
              <img src={selectedImage} alt="Preview" className="w-full h-full object-cover" />
              <button 
                 onClick={() => setSelectedImage(null)}
@@ -101,13 +99,13 @@ const InputSection: React.FC<InputSectionProps> = ({ onSearch, isLoading }) => {
           </div>
         )}
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1 sm:gap-2">
           <button 
             onClick={() => fileInputRef.current?.click()}
-            className="p-3 rounded-full hover:bg-gray-100 text-gray-500 transition-colors tooltip-trigger"
+            className="p-2 sm:p-3 rounded-full hover:bg-gray-100 text-gray-500 transition-colors"
             title="Upload fridge photo"
           >
-            <Camera size={24} />
+            <Camera size={20} className="sm:w-6 sm:h-6" />
           </button>
           <input 
             type="file" 
@@ -117,37 +115,39 @@ const InputSection: React.FC<InputSectionProps> = ({ onSearch, isLoading }) => {
             className="hidden" 
           />
 
-          <div className="flex-1">
+          <div className="flex-1 min-w-[120px]">
              <textarea
                value={text}
                onChange={(e) => setText(e.target.value)}
                onKeyDown={handleKeyDown}
-               placeholder={isRecording ? "Listening..." : "Type ingredients or snap a photo..."}
-               className="w-full bg-transparent border-none focus:ring-0 text-gray-800 placeholder-gray-400 resize-none py-3"
+               placeholder={isRecording ? "Listening..." : "Add ingredients..."}
+               className="w-full bg-transparent border-none focus:ring-0 text-gray-800 placeholder-gray-400 resize-none py-2 sm:py-3 text-sm sm:text-base"
                rows={1}
                disabled={isRecording}
              />
           </div>
 
-          <button 
-             onClick={isRecording ? stopRecording : startRecording}
-             className={`p-3 rounded-full transition-all duration-300 ${isRecording ? 'bg-red-50 text-red-500 animate-pulse' : 'hover:bg-gray-100 text-gray-500'}`}
-             title="Speak ingredients"
-          >
-            {isRecording ? <StopCircle size={24} /> : <Mic size={24} />}
-          </button>
+          <div className="flex items-center gap-1">
+            <button 
+               onClick={isRecording ? stopRecording : startRecording}
+               className={`p-2 sm:p-3 rounded-full transition-all duration-300 ${isRecording ? 'bg-red-50 text-red-500 animate-pulse' : 'hover:bg-gray-100 text-gray-500'}`}
+               title="Speak ingredients"
+            >
+              {isRecording ? <StopCircle size={20} className="sm:w-6 sm:h-6" /> : <Mic size={20} className="sm:w-6 sm:h-6" />}
+            </button>
 
-          <button 
-            onClick={handleSubmit}
-            disabled={isLoading || (!text && !selectedImage && !isRecording)}
-            className={`p-3 rounded-full transition-all duration-300 ${
-                (text || selectedImage) && !isLoading
-                ? 'bg-chef-orange text-white shadow-lg hover:bg-red-500 hover:scale-105' 
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            }`}
-          >
-            {isLoading ? <Loader2 size={24} className="animate-spin" /> : <Send size={24} />}
-          </button>
+            <button 
+              onClick={handleSubmit}
+              disabled={isLoading || (!text && !selectedImage && !isRecording)}
+              className={`p-2 sm:p-3 rounded-full transition-all duration-300 ${
+                  (text || selectedImage) && !isLoading
+                  ? 'bg-chef-orange text-white shadow-lg hover:bg-red-500 hover:scale-105' 
+                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              {isLoading ? <Loader2 size={20} className="sm:w-6 sm:h-6 animate-spin" /> : <Send size={20} className="sm:w-6 sm:h-6" />}
+            </button>
+          </div>
         </div>
       </div>
     </div>
