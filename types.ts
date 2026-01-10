@@ -3,10 +3,15 @@ export interface Ingredient {
   amount?: string;
 }
 
+export interface SpoilageWarning {
+  item: string;
+  reason: string;
+}
+
 export interface Recipe {
   id: string;
   title: string;
-  cuisine: string; // 'Indian' | 'Western' | etc.
+  cuisine: string;
   description: string;
   ingredients: string[];
   instructions: string[];
@@ -17,11 +22,17 @@ export interface Recipe {
   imageUrl?: string;
 }
 
+export interface AnalysisResult {
+  recipes: Recipe[];
+  detectedIngredients: string[];
+  spoilageWarnings: SpoilageWarning[];
+}
+
 export interface HistoryItem {
   id: string;
   timestamp: number;
   queryType: 'text' | 'image' | 'audio';
-  queryPreview: string; // Text snippet or base64 image thumbnail
+  queryPreview: string;
   recipes: Recipe[];
 }
 
