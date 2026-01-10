@@ -1,8 +1,8 @@
-
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Activity, Palette, MessageSquare, CreditCard, Crown, LogOut, HelpCircle, ChevronRight, BookOpen, Shield, LifeBuoy, ArrowLeft, Send, Loader2 } from 'lucide-react';
+import { X, Activity, Palette, MessageSquare, CreditCard, Crown, LogOut, HelpCircle, ChevronRight, BookOpen, Shield, LifeBuoy, ArrowLeft, Send, Loader2, CheckCircle2 } from 'lucide-react';
 import { User, HistoryItem } from '../types';
 import { getHelpContent, getSupportResponse } from '../services/geminiService';
+import { supabase } from '../services/supabaseClient';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -27,6 +27,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, user, hi
   const [helpContent, setHelpContent] = useState<string>('');
   const [isHelpLoading, setIsHelpLoading] = useState(false);
   
+  // Feedback State
+  const [feedbackText, setFeedbackText] = useState('');
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [feedbackStatus, setFeedbackStatus] = useState<'idle' | 'success' | 'error'>('idle');
+
   // Chat State
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
@@ -35,6 +40,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, user, hi
   useEffect(() => {
     setActiveTab(initialTab);
     setActiveHelpTopic(null);
+    setFeedbackStatus('idle');
   }, [isOpen, initialTab]);
 
   useEffect(() => {
@@ -77,6 +83,34 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, user, hi
       setChatMessages(prev => [...prev, { role: 'model', text: response }]);
     } catch (error) {
       setChatMessages(prev => [...prev, { role: 'model', text: "Sorry, I lost connection to the server." }]);
+    }
+  };
+
+  const handleSubmitFeedback = async () => {
+    if (!feedbackText.trim() || isSubmittingFeedback) return;
+
+    setIsSubmittingFeedback(true);
+    setFeedbackStatus('idle');
+
+    try {
+      const { error } = await supabase.from('feedback').insert({
+        user_id: user?.id || null,
+        content: feedbackText,
+        user_email: user?.email || 'Guest',
+        timestamp: new Date().toISOString()
+      });
+
+      if (error) throw error;
+
+      setFeedbackStatus('success');
+      setFeedbackText('');
+      // Reset success message after 3 seconds
+      setTimeout(() => setFeedbackStatus('idle'), 3000);
+    } catch (err) {
+      console.error("Feedback submission error:", err);
+      setFeedbackStatus('error');
+    } finally {
+      setIsSubmittingFeedback(false);
     }
   };
 
@@ -218,15 +252,49 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, user, hi
         );
       case 'feedback':
         return (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
             <h3 className="font-black text-2xl text-gray-800 dark:text-white">Give Feedback</h3>
             <p className="text-gray-500 dark:text-gray-400 font-medium">Help us shape the future of zero-waste cooking.</p>
-            <textarea 
-              className="w-full p-6 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-3xl h-48 resize-none focus:ring-2 focus:ring-chef-orange focus:border-transparent transition-all dark:text-white font-medium" 
-              placeholder="What features should we add next? Any bugs?"
-            ></textarea>
-            <button className="bg-chef-orange text-white font-black py-5 rounded-3xl hover:bg-red-500 w-full shadow-xl shadow-orange-100 dark:shadow-none transition-all active:scale-[0.98] uppercase tracking-widest text-sm">
-              Submit Review
+            
+            <div className="relative">
+              <textarea 
+                value={feedbackText}
+                onChange={(e) => setFeedbackText(e.target.value)}
+                disabled={isSubmittingFeedback || feedbackStatus === 'success'}
+                className="w-full p-6 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-3xl h-48 resize-none focus:ring-2 focus:ring-chef-orange focus:border-transparent transition-all dark:text-white font-medium disabled:opacity-50" 
+                placeholder="What features should we add next? Any bugs?"
+              ></textarea>
+              
+              {feedbackStatus === 'success' && (
+                <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-3xl flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300">
+                  <CheckCircle2 className="text-chef-green mb-2" size={48} />
+                  <p className="text-chef-green font-black uppercase tracking-[0.2em] text-sm">Review Received!</p>
+                  <p className="text-gray-500 dark:text-gray-400 text-xs mt-1">Thank you for your help.</p>
+                </div>
+              )}
+            </div>
+
+            {feedbackStatus === 'error' && (
+              <p className="text-red-500 text-xs font-bold animate-pulse">Failed to send review. Please try again.</p>
+            )}
+
+            <button 
+              onClick={handleSubmitFeedback}
+              disabled={isSubmittingFeedback || !feedbackText.trim() || feedbackStatus === 'success'}
+              className={`font-black py-5 rounded-3xl w-full shadow-xl transition-all active:scale-[0.98] uppercase tracking-widest text-sm flex items-center justify-center gap-3 ${
+                feedbackText.trim() && !isSubmittingFeedback
+                ? 'bg-chef-orange text-white hover:bg-red-500 shadow-orange-100 dark:shadow-none' 
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
+              }`}
+            >
+              {isSubmittingFeedback ? (
+                <>
+                  <Loader2 className="animate-spin" size={20} />
+                  <span>Submitting...</span>
+                </>
+              ) : (
+                <span>Submit Review</span>
+              )}
             </button>
           </div>
         );

@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { Recipe } from '../types';
 
@@ -5,14 +6,15 @@ import { Recipe } from '../types';
 const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const SYSTEM_INSTRUCTION = `
-You are "Pantry Chef", a world-class culinary AI assistant.
-Your goal is to reduce food waste by analyzing ingredients provided by the user (via text, audio, or fridge photos) and suggesting recipes.
-1. Prioritize recipes that use the identified ingredients.
-2. If ingredients are missing, list them separately.
-3. Suggest at least 3 recipes if possible.
-4. MUST include at least one 'Indian' and one 'Western' option.
-5. Be creative but practical.
-6. Output strictly in JSON format as an array of recipes.
+You are "Pantry Chef", a world-class culinary AI assistant specializing in zero-waste cooking.
+Your primary mission is to suggest gourmet recipes that require ZERO additional ingredients.
+1. ONLY suggest recipes that can be made using exclusively the identified ingredients provided by the user.
+2. You may assume the user has very basic pantry staples: salt, black pepper, water, and one generic cooking oil. Do not assume any other spices, herbs, or condiments unless provided.
+3. ABSOLUTELY NO other ingredients are allowed. If an ingredient isn't in the list or the basic staples mentioned above, you cannot use it.
+4. The 'missingIngredients' field in the JSON output MUST be an empty array [].
+5. Suggest at least 3 recipes if possible.
+6. MUST include at least one 'Indian' and one 'Western' option.
+7. Output strictly in JSON format as an array of recipes.
 `;
 
 const RECIPE_SCHEMA = {
@@ -35,13 +37,13 @@ const RECIPE_SCHEMA = {
       missingIngredients: { 
         type: Type.ARRAY, 
         items: { type: Type.STRING },
-        description: "Ingredients the user needs to buy, if any."
+        description: "MUST BE AN EMPTY ARRAY. No additional ingredients allowed."
       },
       prepTime: { type: Type.STRING },
       calories: { type: Type.STRING },
       difficulty: { type: Type.STRING, description: "Easy, Medium, Hard" },
     },
-    required: ["id", "title", "cuisine", "ingredients", "instructions", "prepTime"],
+    required: ["id", "title", "cuisine", "ingredients", "instructions", "prepTime", "missingIngredients"],
   },
 };
 
@@ -83,7 +85,7 @@ export const suggestRecipes = async (
     const parts: any[] = [];
 
     if (input.text) {
-      parts.push({ text: input.text });
+      parts.push({ text: `Ingredients provided: ${input.text}. Suggest recipes using ONLY these items. Zero shopping required.` });
     }
 
     if (input.imageBase64 && input.mimeType) {
@@ -93,7 +95,7 @@ export const suggestRecipes = async (
           mimeType: input.mimeType
         }
       });
-      parts.push({ text: "Identify the ingredients in this image and suggest recipes." });
+      parts.push({ text: "Identify the ingredients in this image and suggest recipes using ONLY what you see. No additional ingredients should be required." });
     }
 
     if (input.audioBase64) {
@@ -103,7 +105,7 @@ export const suggestRecipes = async (
           mimeType: "audio/wav"
         }
       });
-      parts.push({ text: "Listen to the ingredients listed and suggest recipes." });
+      parts.push({ text: "Listen to the ingredients listed and suggest recipes using ONLY those items. Zero additional ingredients." });
     }
 
     if (parts.length === 0) {
@@ -117,15 +119,13 @@ export const suggestRecipes = async (
         systemInstruction: SYSTEM_INSTRUCTION,
         responseMimeType: "application/json",
         responseSchema: RECIPE_SCHEMA,
-        temperature: 0.7,
+        temperature: 0.3, // Lower temperature for stricter adherence to the ingredient list
       },
     });
 
     if (response.text) {
       const recipes = JSON.parse(response.text) as Recipe[];
       
-      // We don't generate images here to avoid long wait times, 
-      // instead we'll trigger them in the background on the frontend
       return recipes.map((r, i) => ({ 
         ...r, 
         id: r.id || `recipe-${Date.now()}-${i}` 
@@ -148,13 +148,13 @@ export const getHelpContent = async (topic: 'guide' | 'privacy' | 'faq'): Promis
 
   switch (topic) {
     case 'guide':
-      prompt = "Write a concise, friendly User Guide for the 'Pantry Chef' app. Explain how to use the text input, camera (to scan ingredients), and microphone to generate recipes. Use emojis and bullet points.";
+      prompt = "Write a concise, friendly User Guide for the 'Pantry Chef' app. Explain how the app creates gourmet meals using ONLY what's in your fridge. Use emojis.";
       break;
     case 'privacy':
-      prompt = "Write a reassuring Privacy & Safety policy for 'Pantry Chef'. Explain that photos are only analyzed for ingredients and not stored permanently, and that user data is secure. Keep it simple and professional.";
+      prompt = "Write a reassuring Privacy & Safety policy for 'Pantry Chef'. Explain that photos are only analyzed for ingredients and not stored permanently. Keep it simple.";
       break;
     case 'faq':
-      prompt = "Generate 5 frequently asked questions and answers for 'Pantry Chef'. Cover topics like 'Is it free?', 'How to pin recipes', and 'Dietary restrictions'.";
+      prompt = "Generate 5 frequently asked questions and answers for 'Pantry Chef'. Emphasize that recipes require no extra shopping.";
       break;
   }
 
@@ -172,7 +172,6 @@ export const getHelpContent = async (topic: 'guide' | 'privacy' | 'faq'): Promis
 export const getSupportResponse = async (history: {role: 'user' | 'model', text: string}[], newMessage: string): Promise<string> => {
   const ai = getAI();
   
-  // Transform history to Gemini format
   const chat = ai.chats.create({
     model: 'gemini-3-flash-preview',
     history: history.map(h => ({

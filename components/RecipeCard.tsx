@@ -1,6 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Recipe } from '../types';
-import { Share2, Copy, Pin, Clock, Flame, ChefHat, Loader2, Check, TrendingUp } from 'lucide-react';
+import { 
+  Share2, Copy, Pin, Clock, Flame, ChefHat, 
+  Loader2, Check, TrendingUp, MessageCircle, 
+  Send as TelegramIcon, Mail, Smartphone, X 
+} from 'lucide-react';
 import { generateRecipeImage } from '../services/geminiService';
 
 interface RecipeCardProps {
@@ -11,9 +15,10 @@ interface RecipeCardProps {
 
 const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPin, isPinned }) => {
   const [copied, setCopied] = useState(false);
-  const [shared, setShared] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
   const [displayImage, setDisplayImage] = useState<string | null>(recipe.imageUrl || null);
   const [imageLoading, setImageLoading] = useState(!recipe.imageUrl);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -35,31 +40,61 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPin, isPinned }) => {
     return () => { isMounted = false; };
   }, [recipe.title, recipe.cuisine, recipe.imageUrl]);
 
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowShareMenu(false);
+      }
+    };
+    if (showShareMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showShareMenu]);
+
+  const getShareText = () => {
+    const ingredients = recipe.ingredients.map(i => `• ${i}`).join('\n');
+    const instructions = recipe.instructions.map((s, i) => `${i + 1}. ${s}`).join('\n');
+    return `Check out this ${recipe.cuisine} recipe: *${recipe.title}*\n\nIngredients:\n${ingredients}\n\nInstructions:\n${instructions}\n\nShared via Pantry Chef 🧑‍🍳`;
+  };
+
   const handleCopy = () => {
-    const text = `${recipe.title}\n\nIngredients:\n${recipe.ingredients.join('\n')}\n\nInstructions:\n${recipe.instructions.join('\n')}`;
+    const text = getShareText();
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleShare = async () => {
-    const shareData = {
-      title: recipe.title,
-      text: `Check out this delicious ${recipe.cuisine} recipe for ${recipe.title} on Pantry Chef!`,
-      url: window.location.href
-    };
+  const shareVia = (platform: 'whatsapp' | 'telegram' | 'email' | 'sms') => {
+    const text = getShareText();
+    const url = window.location.href;
+    const encodedText = encodeURIComponent(text);
+    const encodedUrl = encodeURIComponent(url);
 
-    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
-      try {
-        await navigator.share(shareData);
-        setShared(true);
-        setTimeout(() => setShared(false), 2000);
-      } catch (err) {
-        console.log("Share canceled or failed", err);
-      }
-    } else {
-      handleCopy();
+    let shareUrl = '';
+    switch (platform) {
+      case 'whatsapp':
+        shareUrl = `https://wa.me/?text=${encodedText}`;
+        window.open(shareUrl, '_blank');
+        break;
+      case 'telegram':
+        shareUrl = `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`;
+        window.open(shareUrl, '_blank');
+        break;
+      case 'email':
+        shareUrl = `mailto:?subject=${encodeURIComponent('Recipe: ' + recipe.title)}&body=${encodedText}`;
+        window.location.href = shareUrl;
+        break;
+      case 'sms':
+        // Some mobile OS require & instead of ? for the body parameter
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        shareUrl = `sms:${isIOS ? '&' : '?'}body=${encodedText}`;
+        window.location.href = shareUrl;
+        break;
     }
+
+    setShowShareMenu(false);
   };
 
   const calValue = parseInt(recipe.calories || '0');
@@ -67,7 +102,7 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPin, isPinned }) => {
   const calWidth = Math.min((calValue / 1000) * 100, 100);
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 group border border-gray-100 dark:border-slate-700 h-full flex flex-col">
+    <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 group border border-gray-100 dark:border-slate-700 h-full flex flex-col relative">
       <div className="relative h-48 sm:h-52 overflow-hidden bg-gray-100 dark:bg-slate-700 flex items-center justify-center">
         {imageLoading ? (
           <div className="flex flex-col items-center gap-2">
@@ -152,23 +187,48 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPin, isPinned }) => {
            </div>
         )}
 
-        <div className="mt-auto flex gap-2 sm:gap-3 pt-4 border-t border-gray-100 dark:border-slate-700">
+        <div className="mt-auto flex gap-2 sm:gap-3 pt-4 border-t border-gray-100 dark:border-slate-700 relative">
           <button 
             onClick={handleCopy}
             className="flex-1 flex items-center justify-center gap-2 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-slate-700 rounded-xl sm:rounded-2xl hover:bg-chef-orange hover:text-white transition-all active:scale-95 shadow-sm"
           >
             {copied ? <Check size={14} /> : <Copy size={14} />}
-            <span className="hidden xs:inline">{copied ? 'Copied' : 'Recipe'}</span>
+            <span className="hidden xs:inline">{copied ? 'Copied' : 'Copy'}</span>
             <span className="xs:hidden">{copied ? '✓' : 'Copy'}</span>
           </button>
+          
           <button 
-             onClick={handleShare}
-             className={`flex-1 flex items-center justify-center gap-2 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 rounded-xl sm:rounded-2xl shadow-sm ${shared ? 'bg-chef-green text-white' : 'text-chef-green bg-green-50 dark:bg-green-900/10 hover:bg-chef-green hover:text-white'}`}
+             onClick={() => setShowShareMenu(!showShareMenu)}
+             className={`flex-1 flex items-center justify-center gap-2 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 rounded-xl sm:rounded-2xl shadow-sm ${showShareMenu ? 'bg-chef-green text-white' : 'text-chef-green bg-green-50 dark:bg-green-900/10 hover:bg-chef-green hover:text-white'}`}
           >
-            {shared ? <Check size={14} /> : <Share2 size={14} />}
-            <span className="hidden xs:inline">{shared ? 'Done!' : 'Share'}</span>
+            <Share2 size={14} />
+            <span className="hidden xs:inline">Share</span>
             <span className="xs:hidden">Share</span>
           </button>
+
+          {/* Floating Share Menu */}
+          {showShareMenu && (
+            <div 
+              ref={menuRef}
+              className="absolute bottom-full left-0 right-0 mb-4 bg-white dark:bg-slate-900 rounded-[32px] shadow-2xl border border-gray-100 dark:border-slate-700 p-2 z-20 flex justify-around animate-in slide-in-from-bottom-2 fade-in duration-200"
+            >
+              <button onClick={() => shareVia('whatsapp')} className="p-4 rounded-2xl hover:bg-green-50 dark:hover:bg-green-900/20 text-green-500 transition-all active:scale-90" title="WhatsApp">
+                <MessageCircle size={24} />
+              </button>
+              <button onClick={() => shareVia('telegram')} className="p-4 rounded-2xl hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-500 transition-all active:scale-90" title="Telegram">
+                <TelegramIcon size={24} />
+              </button>
+              <button onClick={() => shareVia('email')} className="p-4 rounded-2xl hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 transition-all active:scale-90" title="Email">
+                <Mail size={24} />
+              </button>
+              <button onClick={() => shareVia('sms')} className="p-4 rounded-2xl hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-500 transition-all active:scale-90" title="Message/SMS">
+                <Smartphone size={24} />
+              </button>
+              <button onClick={() => setShowShareMenu(false)} className="p-4 rounded-2xl hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400 transition-all active:scale-90" title="Close">
+                <X size={24} />
+              </button>
+            </div>
+          )}
         </div>
         
         <div className="mt-4 space-y-1">

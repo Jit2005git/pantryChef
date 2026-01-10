@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Menu, Search, User as UserIcon, HelpCircle, X, ChevronRight, Pin as PinIcon, BookOpen, LogOut } from 'lucide-react';
 import InputSection from './components/InputSection';
@@ -336,8 +335,8 @@ function App() {
         <main className="flex-1 p-6 lg:p-16 max-w-7xl mx-auto w-full relative">
            <div className={`text-center transition-all duration-1000 cubic-bezier(0.4, 0, 0.2, 1) ${recipes.length > 0 ? 'mb-16' : 'my-24'}`}>
               <h1 className="text-6xl md:text-8xl font-black mb-8 text-gray-900 dark:text-white tracking-tighter leading-[0.85]">
-                Cook <span className="text-chef-orange italic">Smarter</span>,<br/>
-                Waste <span className="text-transparent bg-clip-text bg-gradient-to-r from-chef-yellow via-chef-orange to-red-500">Less.</span>
+                Turn <span className="text-chef-orange italic">leftovers</span><br/>
+                into <span className="text-transparent bg-clip-text bg-gradient-to-r from-chef-yellow via-chef-orange to-red-500">Gourmet meals.</span>
               </h1>
               <p className="text-lg md:text-xl text-gray-500 mb-12 max-w-2xl mx-auto dark:text-gray-400 font-medium leading-relaxed">
                 Scan your fridge or list your ingredients. Our AI turns your leftovers into professional-grade culinary delights in seconds.
