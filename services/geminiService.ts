@@ -7,11 +7,12 @@ const SYSTEM_INSTRUCTION = `
 You are "Pantry Chef", a world-class culinary AI assistant specializing in zero-waste cooking and food safety.
 Your mission is to analyze inputs (text, images, or audio) to:
 1. IDENTIFY all food items and ingredients.
-2. INSPECT visual inputs for spoilage: If any food looks rotten, expired, moldy, discolored, or "bad looking", flag it immediately.
-3. SUGGEST gourmet recipes using ONLY the fresh ingredients identified.
-4. ZERO additional ingredients allowed (except salt, pepper, water, and generic oil).
-5. The 'missingIngredients' field MUST be an empty array [].
-6. If spoilage is found, exclude those items from recipes but list them in 'spoilageWarnings'.
+2. INSPECT visual inputs for quality: If the picture is hazy, blurry, too dark, or otherwise not understandable, set 'isUnclear' to true and return the specific message: "click pictures clearly so that the chef can give the recipe".
+3. INSPECT visual inputs for spoilage: If any food looks rotten, expired, moldy, discolored, or "bad looking", flag it immediately in 'spoilageWarnings'.
+4. SUGGEST gourmet recipes using ONLY the fresh ingredients identified.
+5. ZERO additional ingredients allowed (except salt, pepper, water, and generic oil).
+6. The 'missingIngredients' field MUST be an empty array [].
+7. If 'isUnclear' is true, return empty arrays for recipes, ingredients, and warnings.
 `;
 
 const RESPONSE_SCHEMA = {
@@ -51,9 +52,17 @@ const RESPONSE_SCHEMA = {
         },
         required: ["item", "reason"]
       }
+    },
+    isUnclear: {
+      type: Type.BOOLEAN,
+      description: "True if the image is too blurry or hazy to identify anything."
+    },
+    unclearMessage: {
+      type: Type.STRING,
+      description: "Mandatory message if isUnclear is true: 'click pictures clearly so that the chef can give the recipe'"
     }
   },
-  required: ["recipes", "detectedIngredients", "spoilageWarnings"]
+  required: ["recipes", "detectedIngredients", "spoilageWarnings", "isUnclear"]
 };
 
 export const generateRecipeImage = async (title: string, cuisine: string): Promise<string | undefined> => {
@@ -88,7 +97,7 @@ export const suggestRecipes = async (
       parts.push({
         inlineData: { data: input.imageBase64, mimeType: input.mimeType }
       });
-      parts.push({ text: "Carefully analyze this fridge/pantry image. Identify every food item. Look for ANY signs of spoilage, rot, or mold. Provide warnings for bad-looking food." });
+      parts.push({ text: "Carefully analyze this image. First, check if the image is clear enough to identify ingredients. If it is hazy or blurry, flag it. If clear, identify every food item and look for spoilage." });
     }
 
     if (input.audioBase64) {
@@ -105,7 +114,7 @@ export const suggestRecipes = async (
         systemInstruction: SYSTEM_INSTRUCTION,
         responseMimeType: "application/json",
         responseSchema: RESPONSE_SCHEMA,
-        temperature: 0.2,
+        temperature: 0.1, // Lower temperature for more consistent classification of image quality
       },
     });
 
@@ -118,7 +127,7 @@ export const suggestRecipes = async (
       return result;
     }
 
-    return { recipes: [], detectedIngredients: [], spoilageWarnings: [] };
+    return { recipes: [], detectedIngredients: [], spoilageWarnings: [], isUnclear: false };
   } catch (error) {
     console.error("Gemini API Error:", error);
     throw error;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, Search, User as UserIcon, HelpCircle, X, ChevronRight, Pin as PinIcon, BookOpen, LogOut, AlertTriangle, CheckCircle2, ShoppingBasket, Sparkles } from 'lucide-react';
+import { Menu, Search, User as UserIcon, HelpCircle, X, ChevronRight, Pin as PinIcon, BookOpen, LogOut, AlertTriangle, CheckCircle2, ShoppingBasket, Sparkles, CameraOff } from 'lucide-react';
 import InputSection from './components/InputSection';
 import RecipeCard from './components/RecipeCard';
 import SettingsModal from './components/SettingsModal';
@@ -68,6 +68,8 @@ function App() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [detectedIngredients, setDetectedIngredients] = useState<string[]>([]);
   const [warnings, setWarnings] = useState<SpoilageWarning[]>([]);
+  const [isUnclear, setIsUnclear] = useState(false);
+  const [unclearMessage, setUnclearMessage] = useState('');
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [pinnedRecipes, setPinnedRecipes] = useState<Recipe[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -114,21 +116,29 @@ function App() {
     setRecipes([]);
     setDetectedIngredients([]);
     setWarnings([]);
+    setIsUnclear(false);
+    setUnclearMessage('');
 
     try {
       const result = await suggestRecipes(input);
-      setRecipes(result.recipes);
-      setDetectedIngredients(result.detectedIngredients);
-      setWarnings(result.spoilageWarnings);
+      
+      if (result.isUnclear) {
+        setIsUnclear(true);
+        setUnclearMessage(result.unclearMessage || "click pictures clearly so that the chef can give the recipe");
+      } else {
+        setRecipes(result.recipes);
+        setDetectedIngredients(result.detectedIngredients);
+        setWarnings(result.spoilageWarnings);
 
-      const queryPreview = input.text || (input.imageBase64 ? 'Fridge Scan' : 'Voice Query');
-      const queryType = input.imageBase64 ? 'image' : input.audioBase64 ? 'audio' : 'text';
+        const queryPreview = input.text || (input.imageBase64 ? 'Fridge Scan' : 'Voice Query');
+        const queryType = input.imageBase64 ? 'image' : input.audioBase64 ? 'audio' : 'text';
 
-      const newHistoryItem: HistoryItem = { id: Date.now().toString(), timestamp: Date.now(), queryType, queryPreview, recipes: result.recipes };
-      setHistory(prev => [newHistoryItem, ...prev]);
+        const newHistoryItem: HistoryItem = { id: Date.now().toString(), timestamp: Date.now(), queryType, queryPreview, recipes: result.recipes };
+        setHistory(prev => [newHistoryItem, ...prev]);
 
-      if (user) {
-        await supabase.from('history').insert({ user_id: user.id, query_type: queryType, query_preview: queryPreview, recipes: result.recipes, timestamp: new Date().toISOString() });
+        if (user && result.recipes.length > 0) {
+          await supabase.from('history').insert({ user_id: user.id, query_type: queryType, query_preview: queryPreview, recipes: result.recipes, timestamp: new Date().toISOString() });
+        }
       }
     } catch (error) {
       alert("Chef is busy! Please try again.");
@@ -152,7 +162,7 @@ function App() {
     <div className={`min-h-screen flex flex-col relative overflow-x-hidden ${theme === 'dark' ? 'bg-slate-900 text-white' : 'bg-gray-50'}`}>
       <header className="sticky top-0 z-40 bg-white/70 backdrop-blur-xl border-b border-gray-100 dark:bg-slate-900/70 dark:border-slate-800 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => { setRecipes([]); setDetectedIngredients([]); setWarnings([]); }}>
+          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => { setRecipes([]); setDetectedIngredients([]); setWarnings([]); setIsUnclear(false); }}>
             <div className="bg-chef-orange p-2 rounded-2xl text-white shadow-lg group-hover:scale-110 transition-transform">
                <span className="text-2xl">🧑‍🍳</span>
             </div>
@@ -179,7 +189,7 @@ function App() {
                 <p className="text-[10px] font-black uppercase tracking-widest text-center">Your culinary history will appear here.</p>
               </div>
             ) : history.map(item => (
-              <div key={item.id} onClick={() => { setRecipes(item.recipes); setDetectedIngredients([]); setWarnings([]); }} className="p-5 rounded-3xl bg-white dark:bg-slate-800 mb-4 border border-gray-100 dark:border-slate-700 hover:border-orange-200 transition-all cursor-pointer shadow-sm group">
+              <div key={item.id} onClick={() => { setRecipes(item.recipes); setDetectedIngredients([]); setWarnings([]); setIsUnclear(false); }} className="p-5 rounded-3xl bg-white dark:bg-slate-800 mb-4 border border-gray-100 dark:border-slate-700 hover:border-orange-200 transition-all cursor-pointer shadow-sm group">
                 <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{new Date(item.timestamp).toLocaleDateString()}</span>
                 <p className="font-black text-sm text-gray-800 dark:text-gray-200 truncate group-hover:text-chef-orange transition-colors">{item.recipes[0]?.title || 'Chef Suggestion'}</p>
               </div>
@@ -188,7 +198,7 @@ function App() {
         </aside>
 
         <main className="flex-1 p-6 lg:p-16 max-w-7xl mx-auto w-full">
-           <div className={`text-center transition-all duration-1000 ${recipes.length > 0 || isLoading ? 'mb-12' : 'my-24'}`}>
+           <div className={`text-center transition-all duration-1000 ${recipes.length > 0 || isLoading || isUnclear ? 'mb-12' : 'my-24'}`}>
               <h1 className="text-6xl md:text-8xl font-black mb-8 text-gray-900 dark:text-white tracking-tighter leading-[0.85]">
                 Turn <span className="text-chef-orange italic">leftovers</span><br/>
                 into <span className="text-transparent bg-clip-text bg-gradient-to-r from-chef-yellow via-chef-orange to-red-500">Gourmet meals.</span>
@@ -196,8 +206,31 @@ function App() {
               <InputSection onSearch={handleSearch} isLoading={isLoading} />
            </div>
 
+           {/* Unclear Image Warning */}
+           {isUnclear && (
+             <div className="mb-12 animate-in fade-in slide-in-from-top-4 duration-700">
+               <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 p-10 rounded-[40px] flex flex-col items-center text-center gap-6 shadow-xl shadow-amber-100/50 dark:shadow-none">
+                  <div className="bg-amber-500 p-5 rounded-[24px] text-white shadow-lg shadow-amber-200 dark:shadow-none">
+                    <CameraOff size={40} />
+                  </div>
+                  <div>
+                    <h3 className="text-amber-900 dark:text-amber-100 text-2xl font-black mb-2 tracking-tight">Hazy Picture Detected</h3>
+                    <p className="text-amber-800 dark:text-amber-400 font-bold text-lg italic">
+                      "{unclearMessage}"
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => { setIsUnclear(false); setUnclearMessage(''); }}
+                    className="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-8 py-3 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-amber-200 transition-colors"
+                  >
+                    Try Again
+                  </button>
+               </div>
+             </div>
+           )}
+
            {/* Identified Ingredients & Warnings */}
-           {(detectedIngredients.length > 0 || warnings.length > 0) && (
+           {(detectedIngredients.length > 0 || warnings.length > 0) && !isUnclear && (
              <div className="mb-12 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                {warnings.length > 0 && (
                  <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 p-6 rounded-[32px] flex flex-col md:flex-row gap-4 items-start md:items-center">
@@ -246,7 +279,7 @@ function App() {
                  <RecipeCard key={recipe.id} recipe={recipe} onPin={togglePin} isPinned={!!pinnedRecipes.find(r => r.id === recipe.id)} />
                ))}
              </div>
-           ) : !isLoading && (
+           ) : !isLoading && !isUnclear && (
              <div className="animate-in fade-in slide-in-from-bottom-8 duration-1000">
                <div className="flex items-center gap-4 mb-10">
                  <div className="p-3 bg-chef-yellow/20 text-chef-orange rounded-2xl">

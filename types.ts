@@ -26,6 +26,8 @@ export interface AnalysisResult {
   recipes: Recipe[];
   detectedIngredients: string[];
   spoilageWarnings: SpoilageWarning[];
+  isUnclear?: boolean;
+  unclearMessage?: string;
 }
 
 export interface HistoryItem {
